@@ -876,79 +876,59 @@ function loadImages(categoryId) {
 }
 
 // ===== GIF INTEGRATION =====
-const giphyCache = {};
-
-const giphyFallbacks = {
-  hugs: ['cute', 'love'],
-  moon: ['night', 'sleep'],
-  motivation: ['inspirational', 'success'],
-  funny: ['lol', 'comedy'],
-  calm: ['peace', 'nature'],
-  'miss you': ['love', 'thinking of you'],
-  'you are beautiful': ['beautiful', 'self love'],
-  'you matter': ['love', 'hope'],
-  'cute animals': ['puppy', 'kitten'],
-  meditation: ['peace', 'calm'],
-};
 
 function loadGifs(categoryId, query) {
   const gallery = document.querySelector(`.gif-gallery[data-category="${categoryId}"]`);
   if (!gallery) return;
 
-  gallery.innerHTML = '<p class="gif-loading">Loading GIFs...</p>';
+  localStorage.removeItem(`giphy_${categoryId}`);
 
-  const cached = localStorage.getItem(`giphy_${categoryId}`);
-  if (cached) {
-    try {
-      const data = JSON.parse(cached);
-      if (Date.now() - data.timestamp < CONFIG.giphyCacheTTL) {
-        giphyCache[categoryId] = data.urls;
-        renderGifs(gallery, data.urls);
-        return;
-      }
-    } catch (e) {}
-  }
+  gallery.innerHTML = '<p class="gif-loading">Loading GIFs...</p>';
 
   if (CONFIG.giphyApiKey === 'YOUR_GIPHY_API_KEY') {
     gallery.innerHTML = '<p class="gif-error">Add your GIPHY API key in the CONFIG to enable GIFs.</p>';
     return;
   }
 
-  fetchGifs(categoryId, query, gallery, 0);
+  const queries = [query, 'cute', 'love', 'funny', 'smile', 'happy'];
+  tryQuery(categoryId, gallery, queries, 0);
 }
 
-function fetchGifs(categoryId, query, gallery, attempt) {
-  const fallbacks = giphyFallbacks[query] || [];
-  const url = `https://api.giphy.com/v1/gifs/search?api_key=${CONFIG.giphyApiKey}&q=${encodeURIComponent(query)}&limit=12&rating=g&lang=en`;
+function tryQuery(categoryId, gallery, queries, index) {
+  if (index >= queries.length) {
+    const trendingUrl = `https://api.giphy.com/v1/gifs/trending?api_key=${CONFIG.giphyApiKey}&limit=12&rating=g`;
+    fetch(trendingUrl)
+      .then(r => r.json())
+      .then(d => {
+        const urls = d.data.map(g => g.images.fixed_height_downsampled.url);
+        if (urls.length > 0) {
+          localStorage.setItem(`giphy_${categoryId}`, JSON.stringify({ urls, timestamp: Date.now() }));
+          renderGifs(gallery, urls);
+        } else {
+          gallery.innerHTML = '<p class="gif-error">No GIFs found for this category.</p>';
+        }
+      })
+      .catch(() => {
+        gallery.innerHTML = '<p class="gif-error">Could not load GIFs right now. Please try again later.</p>';
+      });
+    return;
+  }
+
+  const q = queries[index];
+  const url = `https://api.giphy.com/v1/gifs/search?api_key=${CONFIG.giphyApiKey}&q=${encodeURIComponent(q)}&limit=12&rating=g&lang=en`;
   fetch(url)
     .then(res => res.json())
     .then(data => {
-      const urls = data.data.map(gif => gif.images.fixed_height_downsampled.url);
-      if (urls.length > 0) {
-        giphyCache[categoryId] = urls;
+      const urls = data.data.map(gif => gif.images.fixed_height_downsampled.url).filter(u => u);
+      if (urls.length >= 4) {
         localStorage.setItem(`giphy_${categoryId}`, JSON.stringify({ urls, timestamp: Date.now() }));
         renderGifs(gallery, urls);
-      } else if (attempt < fallbacks.length) {
-        fetchGifs(categoryId, fallbacks[attempt], gallery, attempt + 1);
       } else {
-        const fallbackUrl = `https://api.giphy.com/v1/gifs/trending?api_key=${CONFIG.giphyApiKey}&limit=12&rating=g`;
-        fetch(fallbackUrl)
-          .then(r => r.json())
-          .then(d => {
-            const u = d.data.map(g => g.images.fixed_height_downsampled.url);
-            renderGifs(gallery, u);
-          })
-          .catch(() => {
-            gallery.innerHTML = '<p class="gif-error">Could not load GIFs right now.</p>';
-          });
+        tryQuery(categoryId, gallery, queries, index + 1);
       }
     })
     .catch(() => {
-      if (attempt < fallbacks.length) {
-        fetchGifs(categoryId, fallbacks[attempt], gallery, attempt + 1);
-      } else {
-        gallery.innerHTML = '<p class="gif-error">Could not load GIFs right now.</p>';
-      }
+      tryQuery(categoryId, gallery, queries, index + 1);
     });
 }
 
