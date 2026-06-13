@@ -881,8 +881,6 @@ function loadGifs(categoryId, query) {
   const gallery = document.querySelector(`.gif-gallery[data-category="${categoryId}"]`);
   if (!gallery) return;
 
-  localStorage.removeItem(`giphy_${categoryId}`);
-
   gallery.innerHTML = '<p class="gif-loading">Loading GIFs...</p>';
 
   if (CONFIG.giphyApiKey === 'YOUR_GIPHY_API_KEY') {
@@ -890,45 +888,39 @@ function loadGifs(categoryId, query) {
     return;
   }
 
-  const queries = [query, 'cute', 'love', 'funny', 'smile', 'happy'];
-  tryQuery(categoryId, gallery, queries, 0);
+  fetchGifs(categoryId, gallery, query);
 }
 
-function tryQuery(categoryId, gallery, queries, index) {
-  if (index >= queries.length) {
-    const trendingUrl = `https://api.giphy.com/v1/gifs/trending?api_key=${CONFIG.giphyApiKey}&limit=12&rating=g`;
-    fetch(trendingUrl)
-      .then(r => r.json())
-      .then(d => {
-        const urls = d.data.map(g => g.images.fixed_height_downsampled.url);
-        if (urls.length > 0) {
-          localStorage.setItem(`giphy_${categoryId}`, JSON.stringify({ urls, timestamp: Date.now() }));
-          renderGifs(gallery, urls);
-        } else {
-          gallery.innerHTML = '<p class="gif-error">No GIFs found for this category.</p>';
-        }
-      })
-      .catch(() => {
-        gallery.innerHTML = '<p class="gif-error">Could not load GIFs right now. Please try again later.</p>';
-      });
-    return;
-  }
-
-  const q = queries[index];
-  const url = `https://api.giphy.com/v1/gifs/search?api_key=${CONFIG.giphyApiKey}&q=${encodeURIComponent(q)}&limit=12&rating=g&lang=en`;
+function fetchGifs(categoryId, gallery, q) {
+  const url = `https://api.giphy.com/v1/gifs/search?api_key=${CONFIG.giphyApiKey}&q=${encodeURIComponent(q)}&limit=12&rating=g`;
   fetch(url)
-    .then(res => res.json())
+    .then(r => r.json())
     .then(data => {
       const urls = data.data.map(gif => gif.images.fixed_height_downsampled.url).filter(u => u);
-      if (urls.length >= 4) {
+      if (urls.length >= 3) {
         localStorage.setItem(`giphy_${categoryId}`, JSON.stringify({ urls, timestamp: Date.now() }));
         renderGifs(gallery, urls);
       } else {
-        tryQuery(categoryId, gallery, queries, index + 1);
+        fetchTrending(categoryId, gallery);
+      }
+    })
+    .catch(() => fetchTrending(categoryId, gallery));
+}
+
+function fetchTrending(categoryId, gallery) {
+  const url = `https://api.giphy.com/v1/gifs/trending?api_key=${CONFIG.giphyApiKey}&limit=12&rating=g`;
+  fetch(url)
+    .then(r => r.json())
+    .then(d => {
+      const urls = d.data.map(g => g.images.fixed_height_downsampled.url).filter(u => u);
+      if (urls.length > 0) {
+        renderGifs(gallery, urls);
+      } else {
+        gallery.innerHTML = '<p class="gif-error">No GIFs found for this category.</p>';
       }
     })
     .catch(() => {
-      tryQuery(categoryId, gallery, queries, index + 1);
+      gallery.innerHTML = '<p class="gif-error">Could not load GIFs right now. Please try again later.</p>';
     });
 }
 
@@ -1092,6 +1084,7 @@ function initMouseTracking() {
 // ===== INITIALIZATION =====
 function init() {
   cacheDom();
+  ['sad','sleep','motivation','laugh','stressed','miss','reminder','lonely','smile','overthinking'].forEach(id => localStorage.removeItem(`giphy_${id}`));
   initStarfield();
   initHearts();
   initDailyMessage();
