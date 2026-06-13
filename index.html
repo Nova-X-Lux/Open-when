@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open When...</title>
+  <meta name="description" content="A collection of little pieces of me for whenever you need them.">
+  <meta name="theme-color" content="#0a0a1a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="starfield"></canvas>
+  <div id="hearts-container"></div>
+
+  <main id="main-content">
+
+    <section id="landing">
+      <h1 id="site-title" tabindex="0" aria-label="Open When - Click 5 times for a secret">Open When...</h1>
+      <p id="subtitle">A collection of little pieces of me for whenever you need them.</p>
+    </section>
+
+    <section id="daily-message-section" aria-label="Today's message">
+      <h2 class="section-title">Today's Message</h2>
+      <div id="daily-message-card" class="glass-card">
+        <p id="daily-date"></p>
+        <p id="daily-text"></p>
+      </div>
+    </section>
+
+    <section id="counter-section" aria-label="Days since we met">
+      <p id="counter-quote">"Distance means so little when someone means so much."</p>
+      <div id="counter-grid">
+        <div class="counter-item glass-card">
+          <span class="counter-number" id="days-count">0</span>
+          <span class="counter-label">Days</span>
+        </div>
+        <div class="counter-item glass-card">
+          <span class="counter-number" id="weeks-count">0</span>
+          <span class="counter-label">Weeks</span>
+        </div>
+        <div class="counter-item glass-card">
+          <span class="counter-number" id="months-count">0</span>
+          <span class="counter-label">Months</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="cards-section" aria-label="Open When envelopes">
+      <h2 class="section-title">Open When...</h2>
+      <div id="cards-grid"></div>
+    </section>
+
+    <section id="letter-section" aria-label="Read a letter">
+      <h2 class="section-title">Read A Letter</h2>
+      <div id="letter-preview" class="glass-card" tabindex="0" role="button" aria-label="Click to open letter">
+        <div id="letter-icon">&#x1F4EC;</div>
+        <p>A letter for you, written from the heart.</p>
+        <p class="letter-click-hint">Click to open</p>
+      </div>
+    </section>
+
+    <section id="timeline-section" aria-label="Memory timeline">
+      <h2 class="section-title">Our Timeline</h2>
+      <p class="section-subtitle">The moments that matter, captured here.</p>
+      <div id="timeline"></div>
+      <button id="add-timeline-btn" class="glass-btn" aria-label="Add a new memory">+ Add Memory</button>
+    </section>
+
+  </main>
+
+  <div id="modal-overlay" class="hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div id="modal-container">
+      <button id="modal-close" aria-label="Close modal">&times;</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <div id="letter-modal" class="hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div id="letter-modal-container">
+      <button id="letter-modal-close" aria-label="Close letter">&times;</button>
+      <div id="letter-modal-content">
+        <div class="letter-paper">
+          <div class="letter-header">
+            <p class="letter-date" id="letter-date"></p>
+            <p class="letter-greeting">My Dearest,</p>
+          </div>
+          <div class="letter-body" id="letter-body">
+            <p>I wrote this letter not because I have something profound to say, but because I wanted you to have something tangible to hold onto — even if only in your heart.</p>
+            <p>There are moments when I wish I could just reach through the screen and be beside you. To sit with you in comfortable silence, to make you laugh when you're feeling down, to hold your hand when the world feels heavy.</p>
+            <p>But until that day comes, I hope these words find you well. I hope they wrap around you like a warm blanket on a cold night. I hope they remind you that you are never truly alone — because somewhere, at any given moment, someone is thinking of you.</p>
+            <p>You are more than enough. You are brave, you are kind, you are beautiful in ways that words cannot capture. And no matter how far apart we are, you carry a piece of me with you wherever you go.</p>
+            <p>Take a deep breath. You've got this. And I've got you.</p>
+          </div>
+          <div class="letter-footer">
+            <p>Forever yours,</p>
+            <p class="letter-signature" id="letter-signature">Someone who cares</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="secret-reveal" class="hidden" aria-live="polite">
+    <p>Thank you for being part of my life ❤️</p>
+  </div>
+
+  <div id="timeline-modal" class="hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div id="timeline-modal-container">
+      <button id="timeline-modal-close" aria-label="Close">&times;</button>
+      <div id="timeline-modal-content">
+        <h2>Add a Memory</h2>
+        <form id="timeline-form">
+          <label for="timeline-date">Date</label>
+          <input type="date" id="timeline-date" required>
+          <label for="timeline-title">Title</label>
+          <input type="text" id="timeline-title" placeholder="What happened?" required>
+          <label for="timeline-desc">Description</label>
+          <textarea id="timeline-desc" placeholder="Tell the story..." rows="4" required></textarea>
+          <button type="submit" class="glass-btn">Save Memory</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
