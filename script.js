@@ -486,7 +486,7 @@ const categories = [
       { title: 'Something to remember', content: 'You have survived every difficult day you have ever faced. This one will be no different.' },
       { title: 'A little hug for your heart', content: 'Imagine I\'m sitting beside you right now, holding your hand, saying nothing — just being with you. That\'s where I am in my heart.' },
     ],
-    giphyQuery: 'comforting hug',
+    giphyQuery: 'hugs',
   },
   {
     id: 'sleep',
@@ -499,7 +499,7 @@ const categories = [
       { title: 'Close your eyes', content: 'Take three slow, deep breaths. Breathe in peace. Breathe out tension. One more time. Feel your body getting heavier, softer, warmer.' },
       { title: 'A bedtime thought', content: 'The moon is beautiful tonight, and somewhere, I\'m looking up at the same sky, thinking of you. We\'re connected by the same stars.' },
     ],
-    giphyQuery: 'night sky stars relaxing',
+    giphyQuery: 'moon',
   },
   {
     id: 'motivation',
@@ -512,7 +512,7 @@ const categories = [
       { title: 'Your power', content: 'Within you is strength that has carried you through every storm. Trust that strength. It has never let you down.' },
       { title: 'One small step', content: 'You don\'t need to do everything today. Just do one thing. Then another. That\'s all progress is — small steps taken consistently.' },
     ],
-    giphyQuery: 'motivation encouragement success',
+    giphyQuery: 'motivation',
   },
   {
     id: 'laugh',
@@ -525,7 +525,7 @@ const categories = [
       { title: 'Funny thought', content: 'Imagine if animals could talk. Your cat would probably just sass you all day. And honestly? That\'s hilarious.' },
       { title: 'Smile reminder', content: 'You have a beautiful smile. Even when you\'re not feeling it, try smiling for 5 seconds. Feel that? That\'s joy sneaking in.' },
     ],
-    giphyQuery: 'funny wholesome comedy',
+    giphyQuery: 'funny',
   },
   {
     id: 'stressed',
@@ -538,7 +538,7 @@ const categories = [
       { title: 'Ground yourself', content: 'Look around. Name 5 things you can see. 4 things you can touch. 3 things you can hear. 2 things you can smell. 1 thing you can taste. You are here. You are safe.' },
       { title: 'You are not your stress', content: 'Stress is a visitor, not a resident. It will pass. Just breathe through it.' },
     ],
-    giphyQuery: 'calm relax peaceful',
+    giphyQuery: 'calm',
   },
   {
     id: 'miss',
@@ -551,7 +551,7 @@ const categories = [
       { title: 'Close your eyes', content: 'Imagine I\'m right there with you. I\'m holding your hand, looking into your eyes, and smiling. That\'s where I am in spirit.' },
       { title: 'Until we meet again', content: 'Every day apart is a day closer to being together again. And when that day comes, every second of waiting will be worth it.' },
     ],
-    giphyQuery: 'love miss you longing',
+    giphyQuery: 'miss you',
   },
   {
     id: 'reminder',
@@ -564,7 +564,7 @@ const categories = [
       { title: 'The truth about you', content: 'You are worthy of love. You are worthy of happiness. You are worthy of every good thing that comes your way. Never doubt that.' },
       { title: 'What I see in you', content: 'I see someone who tries, who cares, who loves deeply. I see someone who is growing every single day. I see someone beautiful — inside and out.' },
     ],
-    giphyQuery: 'self love reminder beautiful',
+    giphyQuery: 'you are beautiful',
   },
   {
     id: 'lonely',
@@ -577,7 +577,7 @@ const categories = [
       { title: 'We are connected', content: 'Every time you see a shooting star, imagine it\'s me sending you a little love from afar. We\'re connected by more than distance.' },
       { title: 'A thought for you', content: 'Loneliness is just your heart reminding you of the people you love. And I\'m right here, loving you back.' },
     ],
-    giphyQuery: 'you are not alone love connection',
+    giphyQuery: 'you matter',
   },
   {
     id: 'smile',
@@ -590,7 +590,7 @@ const categories = [
       { title: 'Something cute', content: 'Puppies, kittens, baby animals — nature\'s way of making sure we smile every single day. You\'re cuter than all of them though.' },
       { title: 'A happy thought', content: 'Imagine your favorite memory — the one that always makes you smile. Relive it for a moment. Feel that warmth? That\'s joy living in you.' },
     ],
-    giphyQuery: 'cute animals wholesome smile',
+    giphyQuery: 'cute animals',
   },
   {
     id: 'overthinking',
@@ -603,7 +603,7 @@ const categories = [
       { title: 'Pause the noise', content: 'Write down everything on your mind. Every thought, every worry. Then close your eyes and let them go, one by one. They don\'t own you.' },
       { title: 'You are not your thoughts', content: 'Your thoughts are like clouds passing through the sky of your mind. You are the sky — vast, unchanging, peaceful. The clouds will pass.' },
     ],
-    giphyQuery: 'calm your mind peace meditation',
+    giphyQuery: 'meditation',
   },
 ];
 
@@ -796,7 +796,7 @@ function openModal(category) {
     <div class="modal-title">${icon} ${title}</div>
     <div class="modal-message">${messageHtml}</div>
     ${sectionsHtml}
-    <div class="modal-section">
+    <div class="modal-section image-gallery-section" data-category="${id}" style="display:none">
       <h3>Our Gallery</h3>
       <div class="image-gallery" data-category="${id}"></div>
     </div>
@@ -845,11 +845,51 @@ function closeLetterModal() {
 function loadImages(categoryId) {
   const gallery = document.querySelector(`.image-gallery[data-category="${categoryId}"]`);
   if (!gallery) return;
-  gallery.innerHTML = '<p class="gif-loading">No images yet. Add images to images/' + categoryId + '/ and they will appear here.</p>';
+  const section = document.querySelector(`.image-gallery-section[data-category="${categoryId}"]`);
+  const names = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'photo', 'image', 'pic', 'img'];
+  const exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  let found = false;
+  for (const name of names) {
+    for (const ext of exts) {
+      const img = new Image();
+      img.onload = () => {
+        if (!found) {
+          found = true;
+          gallery.innerHTML = '';
+          if (section) section.style.display = '';
+        }
+        const clone = new Image();
+        clone.src = img.src;
+        clone.loading = 'lazy';
+        clone.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--glass-border);cursor:pointer';
+        clone.addEventListener('click', () => window.open(img.src, '_blank'));
+        gallery.appendChild(clone);
+      };
+      img.src = `images/${categoryId}/${name}.${ext}`;
+    }
+  }
+  setTimeout(() => {
+    if (!found) {
+      gallery.innerHTML = '<p class="gif-loading">No images yet. Add images to images/' + categoryId + '/ to see them here.</p>';
+    }
+  }, 2000);
 }
 
 // ===== GIF INTEGRATION =====
 const giphyCache = {};
+
+const giphyFallbacks = {
+  hugs: ['cute', 'love'],
+  moon: ['night', 'sleep'],
+  motivation: ['inspirational', 'success'],
+  funny: ['lol', 'comedy'],
+  calm: ['peace', 'nature'],
+  'miss you': ['love', 'thinking of you'],
+  'you are beautiful': ['beautiful', 'self love'],
+  'you matter': ['love', 'hope'],
+  'cute animals': ['puppy', 'kitten'],
+  meditation: ['peace', 'calm'],
+};
 
 function loadGifs(categoryId, query) {
   const gallery = document.querySelector(`.gif-gallery[data-category="${categoryId}"]`);
@@ -874,17 +914,41 @@ function loadGifs(categoryId, query) {
     return;
   }
 
+  fetchGifs(categoryId, query, gallery, 0);
+}
+
+function fetchGifs(categoryId, query, gallery, attempt) {
+  const fallbacks = giphyFallbacks[query] || [];
   const url = `https://api.giphy.com/v1/gifs/search?api_key=${CONFIG.giphyApiKey}&q=${encodeURIComponent(query)}&limit=12&rating=g&lang=en`;
   fetch(url)
     .then(res => res.json())
     .then(data => {
       const urls = data.data.map(gif => gif.images.fixed_height_downsampled.url);
-      giphyCache[categoryId] = urls;
-      localStorage.setItem(`giphy_${categoryId}`, JSON.stringify({ urls, timestamp: Date.now() }));
-      renderGifs(gallery, urls);
+      if (urls.length > 0) {
+        giphyCache[categoryId] = urls;
+        localStorage.setItem(`giphy_${categoryId}`, JSON.stringify({ urls, timestamp: Date.now() }));
+        renderGifs(gallery, urls);
+      } else if (attempt < fallbacks.length) {
+        fetchGifs(categoryId, fallbacks[attempt], gallery, attempt + 1);
+      } else {
+        const fallbackUrl = `https://api.giphy.com/v1/gifs/trending?api_key=${CONFIG.giphyApiKey}&limit=12&rating=g`;
+        fetch(fallbackUrl)
+          .then(r => r.json())
+          .then(d => {
+            const u = d.data.map(g => g.images.fixed_height_downsampled.url);
+            renderGifs(gallery, u);
+          })
+          .catch(() => {
+            gallery.innerHTML = '<p class="gif-error">Could not load GIFs right now.</p>';
+          });
+      }
     })
     .catch(() => {
-      gallery.innerHTML = '<p class="gif-error">Could not load GIFs right now. Please try again later.</p>';
+      if (attempt < fallbacks.length) {
+        fetchGifs(categoryId, fallbacks[attempt], gallery, attempt + 1);
+      } else {
+        gallery.innerHTML = '<p class="gif-error">Could not load GIFs right now.</p>';
+      }
     });
 }
 
