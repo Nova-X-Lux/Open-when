@@ -10,8 +10,20 @@ const CONFIG = {
   senderName: 'Me',
   herName: 'You',
   heartsFrequency: 3000,
-  giphyCacheTTL: 86400000,
 };
+
+// ===== FIREBASE INIT =====
+const firebaseConfig = {
+  apiKey: "AIzaSyBtRb_c_cLZPeAQwDq7cLMLZ0-k0ETDIZ0",
+  authDomain: "open-when-1337.firebaseapp.com",
+  projectId: "open-when-1337",
+  storageBucket: "open-when-1337.firebasestorage.app",
+  messagingSenderId: "234977976966",
+  appId: "1:234977976966:web:9c8d433f01786089982707",
+  measurementId: "G-YY4NG714LT"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 // ===== 365 DAILY MESSAGES =====
 const dailyMessages = [
@@ -607,10 +619,6 @@ const categories = [
   },
 ];
 
-// ===== TIMELINE DATA =====
-const defaultTimeline = [
-  { date: '2026-04-25', title: 'First started talking', desc: 'The day we first connected.' },
-];
 
 // ===== DOM REFS =====
 const $ = (sel) => document.querySelector(sel);
@@ -994,51 +1002,67 @@ function initSecret() {
   });
 }
 
-// ===== TIMELINE =====
-function getTimeline() {
-  const stored = localStorage.getItem('openwhen_timeline');
-  if (stored) {
-    try { return JSON.parse(stored); } catch (e) {}
-  }
-  return [...defaultTimeline];
-}
+// ===== TIMELINE (Firestore, real-time) =====
+let timelineUnsubscribe = null;
 
-function saveTimeline(entries) {
-  localStorage.setItem('openwhen_timeline', JSON.stringify(entries));
-}
-
-function renderTimeline() {
-  const entries = getTimeline();
+function renderTimeline(entries) {
   dom.timeline.innerHTML = '';
-  if (entries.length === 0) {
+  if (!entries || entries.length === 0) {
     dom.timeline.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px 0;">No memories yet. Start adding some!</p>';
     return;
   }
-  for (let i = entries.length - 1; i >= 0; i--) {
-    const entry = entries[i];
+  const sorted = [...entries].sort((a, b) => {
+    if (a.createdAt && b.createdAt) return b.createdAt - a.createdAt;
+    return 0;
+  });
+  for (let i = 0; i < sorted.length; i++) {
+    const entry = sorted[i];
     const el = document.createElement('div');
     el.className = 'timeline-entry';
-    el.style.animationDelay = (entries.length - 1 - i) * 0.1 + 's';
+    el.style.animationDelay = i * 0.1 + 's';
     const imgHtml = entry.image ? `<img src="${entry.image}" alt="Memory photo" class="entry-img">` : '';
     el.innerHTML = `
       <div class="entry-date">${entry.date}</div>
       <div class="entry-title">${entry.title}</div>
       ${imgHtml}
       <div class="entry-desc">${entry.desc}</div>
-      <button class="entry-delete" data-index="${i}" aria-label="Delete memory">&times;</button>
+      <button class="entry-delete" data-id="${entry.id}" aria-label="Delete memory">&times;</button>
     `;
     el.querySelector('.entry-delete').addEventListener('click', () => {
-      const all = getTimeline();
-      all.splice(i, 1);
-      saveTimeline(all);
-      renderTimeline();
+      if (entry.id) db.collection('timeline').doc(entry.id).delete();
     });
     dom.timeline.appendChild(el);
   }
 }
 
+function setupTimelineListener() {
+  if (timelineUnsubscribe) timelineUnsubscribe();
+  timelineUnsubscribe = db.collection('timeline').orderBy('createdAt', 'asc').onSnapshot((snapshot) => {
+    const entries = [];
+    let isEmpty = true;
+    snapshot.forEach((doc) => {
+      isEmpty = false;
+      const d = doc.data();
+      entries.push({ id: doc.id, ...d });
+    });
+    if (isEmpty) {
+      db.collection('timeline').add({
+        date: '2026-04-25',
+        title: 'First started talking',
+        desc: 'The day we first connected.',
+        image: '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    renderTimeline(entries);
+  }, (error) => {
+    console.error('Firestore error:', error);
+    dom.timeline.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px 0;">Could not load timeline. Check Firebase config.</p>';
+  });
+}
+
 function initTimeline() {
-  renderTimeline();
+  setupTimelineListener();
 
   dom.addTimelineBtn.addEventListener('click', () => {
     dom.timelineModal.classList.remove('hidden');
@@ -1062,21 +1086,24 @@ function initTimeline() {
     const desc = document.getElementById('timeline-desc').value.trim();
     if (!date || !title || !desc) return;
     const fileInput = document.getElementById('timeline-image');
-    const processEntry = (imageDataUrl) => {
-      const all = getTimeline();
-      all.push({ date, title, desc, image: imageDataUrl || '' });
-      saveTimeline(all);
-      renderTimeline();
+    const saveEntry = (imageDataUrl) => {
+      db.collection('timeline').add({
+        date,
+        title,
+        desc,
+        image: imageDataUrl || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
       dom.timelineModal.classList.add('hidden');
       dom.timelineModal.setAttribute('aria-hidden', 'true');
       fileInput.value = '';
     };
     if (fileInput && fileInput.files[0]) {
       const reader = new FileReader();
-      reader.onload = (ev) => processEntry(ev.target.result);
+      reader.onload = (ev) => saveEntry(ev.target.result);
       reader.readAsDataURL(fileInput.files[0]);
     } else {
-      processEntry(null);
+      saveEntry(null);
     }
   });
 }
