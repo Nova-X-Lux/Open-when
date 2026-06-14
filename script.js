@@ -1025,6 +1025,7 @@ function initSecret() {
 
 // ===== TIMELINE (Firestore, real-time) =====
 let timelineUnsubscribe = null;
+let editingEntryId = null;
 
 function renderTimeline(entries) {
   dom.timeline.innerHTML = '';
@@ -1042,17 +1043,40 @@ function renderTimeline(entries) {
     const el = document.createElement('div');
     el.className = 'timeline-entry';
     el.style.animationDelay = i * 0.1 + 's';
-    const imgHtml = entry.image ? `<img src="${entry.image}" alt="Memory photo" class="entry-img">` : '';
+    const imgHtml = entry.image ? `<img src="${entry.image}" alt="Memory photo" class="entry-img" loading="lazy">` : '';
     el.innerHTML = `
       <div class="entry-date">${entry.date}</div>
       <div class="entry-title">${entry.title}</div>
       ${imgHtml}
       <div class="entry-desc">${entry.desc}</div>
-      <button class="entry-delete" data-id="${entry.id}" aria-label="Delete memory">&times;</button>
+      <div class="entry-actions">
+        <button class="entry-edit" data-id="${entry.id}" aria-label="Edit memory">&#9998;</button>
+        <button class="entry-delete" data-id="${entry.id}" aria-label="Delete memory">&times;</button>
+      </div>
     `;
     el.querySelector('.entry-delete').addEventListener('click', () => {
       if (entry.id) db.collection('timeline').doc(entry.id).delete().catch(e => console.error('Delete error:', e));
     });
+    el.querySelector('.entry-edit').addEventListener('click', () => {
+      editingEntryId = entry.id;
+      document.getElementById('timeline-date').value = entry.date || '';
+      document.getElementById('timeline-title').value = entry.title || '';
+      document.getElementById('timeline-desc').value = entry.desc || '';
+      dom.timelineModal.classList.remove('hidden');
+      dom.timelineModal.setAttribute('aria-hidden', 'false');
+      document.getElementById('timeline-title').focus();
+      trapFocus(dom.timelineModal);
+    });
+    const imgEl = el.querySelector('.entry-img');
+    if (imgEl) {
+      imgEl.addEventListener('click', () => {
+        const viewer = document.getElementById('image-viewer');
+        const img = viewer.querySelector('img');
+        img.src = entry.image;
+        viewer.classList.remove('hidden');
+        viewer.setAttribute('aria-hidden', 'false');
+      });
+    }
     dom.timeline.appendChild(el);
   }
 }
@@ -1087,9 +1111,10 @@ function initTimeline() {
   setupTimelineListener();
 
   dom.addTimelineBtn.addEventListener('click', () => {
+    editingEntryId = null;
+    dom.timelineForm.reset();
     dom.timelineModal.classList.remove('hidden');
     dom.timelineModal.setAttribute('aria-hidden', 'false');
-    dom.timelineForm.reset();
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('timeline-date').value = today;
     document.getElementById('timeline-date').focus();
@@ -1099,6 +1124,7 @@ function initTimeline() {
   dom.timelineModalClose.addEventListener('click', () => {
     dom.timelineModal.classList.add('hidden');
     dom.timelineModal.setAttribute('aria-hidden', 'true');
+    editingEntryId = null;
   });
 
   dom.timelineForm.addEventListener('submit', (e) => {
@@ -1108,20 +1134,31 @@ function initTimeline() {
     const desc = document.getElementById('timeline-desc').value.trim();
     if (!date || !title || !desc) return;
     const fileInput = document.getElementById('timeline-image');
+
     const saveEntry = (imageDataUrl) => {
-      db.collection('timeline').add({
-        date,
-        title,
-        desc,
-        image: imageDataUrl || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }).catch((err) => {
-        console.error('Firestore write error:', err);
-        alert('Could not save memory. Check Firestore security rules.');
-      });
+      if (editingEntryId) {
+        const updateData = { date, title, desc };
+        if (imageDataUrl) updateData.image = imageDataUrl;
+        db.collection('timeline').doc(editingEntryId).update(updateData).catch((err) => {
+          console.error('Firestore update error:', err);
+          alert('Could not update memory.');
+        });
+      } else {
+        db.collection('timeline').add({
+          date,
+          title,
+          desc,
+          image: imageDataUrl || '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        }).catch((err) => {
+          console.error('Firestore write error:', err);
+          alert('Could not save memory. Check Firestore security rules.');
+        });
+      }
       dom.timelineModal.classList.add('hidden');
       dom.timelineModal.setAttribute('aria-hidden', 'true');
       fileInput.value = '';
+      editingEntryId = null;
     };
     if (fileInput && fileInput.files[0]) {
       compressImage(fileInput.files[0], 800, 0.7).then(saveEntry).catch(() => saveEntry(null));
@@ -1169,6 +1206,16 @@ function initKeyboardNav() {
         dom.timelineModal.classList.add('hidden');
         dom.timelineModal.setAttribute('aria-hidden', 'true');
       }
+      if (!document.getElementById('image-viewer').classList.contains('hidden')) {
+        document.getElementById('image-viewer').classList.add('hidden');
+        document.getElementById('image-viewer').setAttribute('aria-hidden', 'true');
+      }
+    }
+  });
+  document.getElementById('image-viewer').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget || e.target.id === 'image-viewer-close') {
+      document.getElementById('image-viewer').classList.add('hidden');
+      document.getElementById('image-viewer').setAttribute('aria-hidden', 'true');
     }
   });
 }
