@@ -25,6 +25,27 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
+// ===== IMAGE COMPRESSION =====
+function compressImage(file, maxW, quality) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxW) { h *= maxW / w; w = maxW; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // ===== 365 DAILY MESSAGES =====
 const dailyMessages = [
   "Just a reminder that you've survived every difficult day you've ever had.",
@@ -902,15 +923,13 @@ function loadImages(categoryId) {
     uploadInput.onchange = (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
+      compressImage(file, 800, 0.7).then((dataUrl) => {
         const imgs = getUploadedImages(categoryId);
-        imgs.push(ev.target.result);
+        imgs.push(dataUrl);
         if (imgs.length > 20) imgs.splice(0, imgs.length - 20);
         saveUploadedImages(categoryId, imgs);
         loadImages(categoryId);
-      };
-      reader.readAsDataURL(file);
+      });
       uploadInput.value = '';
     };
     if (uploadBtn) {
@@ -1052,12 +1071,14 @@ function setupTimelineListener() {
         desc: 'The day we first connected.',
         image: '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }).catch((err) => {
+        console.error('Default timeline entry error:', err);
       });
     }
     renderTimeline(entries);
   }, (error) => {
     console.error('Firestore error:', error);
-    dom.timeline.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px 0;">Could not load timeline. Check Firebase config.</p>';
+    dom.timeline.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:40px 0;">Could not connect to database. <button onclick="location.reload()" style="background:none;color:var(--accent-pink);text-decoration:underline;cursor:pointer;border:none;font:inherit">Retry</button></p>';
   });
 }
 
@@ -1093,15 +1114,16 @@ function initTimeline() {
         desc,
         image: imageDataUrl || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }).catch((err) => {
+        console.error('Firestore write error:', err);
+        alert('Could not save memory. Check Firestore security rules.');
       });
       dom.timelineModal.classList.add('hidden');
       dom.timelineModal.setAttribute('aria-hidden', 'true');
       fileInput.value = '';
     };
     if (fileInput && fileInput.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (ev) => saveEntry(ev.target.result);
-      reader.readAsDataURL(fileInput.files[0]);
+      compressImage(fileInput.files[0], 800, 0.7).then(saveEntry);
     } else {
       saveEntry(null);
     }
