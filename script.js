@@ -423,7 +423,7 @@ const dailyMessages = [
   "Your presence is my favorite kind of magic.",
   "You are a beautiful reason to believe in forever.",
   "Your kindness is the most beautiful kind of humanity.",
-  "You are the most beautiful kind of soul I've met.",
+  "You have the most beautiful soul I know.",
   "Your spirit is the most beautiful kind of sunrise.",
   "You are beautifully and wonderfully my person.",
   "your heart is the most beautiful kind of anchor.",
