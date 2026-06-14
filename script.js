@@ -799,6 +799,10 @@ function openModal(category) {
     <div class="modal-section image-gallery-section" data-category="${id}" style="display:none">
       <h3>Our Gallery</h3>
       <div class="image-gallery" data-category="${id}"></div>
+      <div class="upload-area" data-category="${id}">
+        <label class="upload-btn glass-btn" tabindex="0" role="button" aria-label="Upload image to this category">+ Add Image</label>
+        <input type="file" accept="image/*" class="upload-input" data-category="${id}" hidden>
+      </div>
     </div>
     <div class="modal-section">
       <h3>Something for you</h3>
@@ -841,38 +845,71 @@ function closeLetterModal() {
   dom.letterModal.setAttribute('aria-hidden', 'true');
 }
 
-// ===== IMAGE LOADING =====
+// ===== IMAGE LOADING & UPLOAD =====
+function getUploadedImages(categoryId) {
+  try { return JSON.parse(localStorage.getItem(`uploaded_${categoryId}`)) || []; } catch (e) { return []; }
+}
+
+function saveUploadedImages(categoryId, imgs) {
+  localStorage.setItem(`uploaded_${categoryId}`, JSON.stringify(imgs));
+}
+
 function loadImages(categoryId) {
   const gallery = document.querySelector(`.image-gallery[data-category="${categoryId}"]`);
   if (!gallery) return;
   const section = document.querySelector(`.image-gallery-section[data-category="${categoryId}"]`);
-  const names = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'photo', 'image', 'pic', 'img'];
-  const exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-  let found = false;
-  for (const name of names) {
-    for (const ext of exts) {
-      const img = new Image();
-      img.onload = () => {
-        if (!found) {
-          found = true;
-          gallery.innerHTML = '';
-          if (section) section.style.display = '';
-        }
-        const clone = new Image();
-        clone.src = img.src;
-        clone.loading = 'lazy';
-        clone.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--glass-border);cursor:pointer';
-        clone.addEventListener('click', () => window.open(img.src, '_blank'));
-        gallery.appendChild(clone);
+  gallery.innerHTML = '';
+
+  const uploaded = getUploadedImages(categoryId);
+  let count = 0;
+
+  for (const imgData of uploaded) {
+    const img = document.createElement('img');
+    img.src = imgData;
+    img.loading = 'lazy';
+    img.alt = 'Uploaded image';
+    const del = document.createElement('button');
+    del.className = 'img-del';
+    del.innerHTML = '&times;';
+    del.setAttribute('aria-label', 'Delete image');
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const imgs = getUploadedImages(categoryId);
+      const idx = imgs.indexOf(imgData);
+      if (idx > -1) { imgs.splice(idx, 1); saveUploadedImages(categoryId, imgs); loadImages(categoryId); }
+    });
+    const wrap = document.createElement('div');
+    wrap.className = 'img-wrap';
+    wrap.appendChild(img);
+    wrap.appendChild(del);
+    gallery.appendChild(wrap);
+    count++;
+  }
+
+  if (count > 0 && section) section.style.display = '';
+
+  const uploadInput = document.querySelector(`.upload-input[data-category="${categoryId}"]`);
+  const uploadBtn = document.querySelector(`.upload-btn[data-category="${categoryId}"]`);
+  if (uploadInput) {
+    uploadInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const imgs = getUploadedImages(categoryId);
+        imgs.push(ev.target.result);
+        if (imgs.length > 20) imgs.splice(0, imgs.length - 20);
+        saveUploadedImages(categoryId, imgs);
+        loadImages(categoryId);
       };
-      img.src = `images/${categoryId}/${name}.${ext}`;
+      reader.readAsDataURL(file);
+      uploadInput.value = '';
+    };
+    if (uploadBtn) {
+      uploadBtn.addEventListener('click', () => uploadInput.click());
+      uploadBtn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); uploadInput.click(); } });
     }
   }
-  setTimeout(() => {
-    if (!found) {
-      gallery.innerHTML = '<p class="gif-loading">No images yet. Add images to images/' + categoryId + '/ to see them here.</p>';
-    }
-  }, 2000);
 }
 
 // ===== GIF INTEGRATION =====
@@ -982,9 +1019,11 @@ function renderTimeline() {
     const el = document.createElement('div');
     el.className = 'timeline-entry';
     el.style.animationDelay = (entries.length - 1 - i) * 0.1 + 's';
+    const imgHtml = entry.image ? `<img src="${entry.image}" alt="Memory photo" class="entry-img">` : '';
     el.innerHTML = `
       <div class="entry-date">${entry.date}</div>
       <div class="entry-title">${entry.title}</div>
+      ${imgHtml}
       <div class="entry-desc">${entry.desc}</div>
       <button class="entry-delete" data-index="${i}" aria-label="Delete memory">&times;</button>
     `;
@@ -1022,12 +1061,23 @@ function initTimeline() {
     const title = document.getElementById('timeline-title').value.trim();
     const desc = document.getElementById('timeline-desc').value.trim();
     if (!date || !title || !desc) return;
-    const all = getTimeline();
-    all.push({ date, title, desc });
-    saveTimeline(all);
-    renderTimeline();
-    dom.timelineModal.classList.add('hidden');
-    dom.timelineModal.setAttribute('aria-hidden', 'true');
+    const fileInput = document.getElementById('timeline-image');
+    const processEntry = (imageDataUrl) => {
+      const all = getTimeline();
+      all.push({ date, title, desc, image: imageDataUrl || '' });
+      saveTimeline(all);
+      renderTimeline();
+      dom.timelineModal.classList.add('hidden');
+      dom.timelineModal.setAttribute('aria-hidden', 'true');
+      fileInput.value = '';
+    };
+    if (fileInput && fileInput.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (ev) => processEntry(ev.target.result);
+      reader.readAsDataURL(fileInput.files[0]);
+    } else {
+      processEntry(null);
+    }
   });
 }
 
