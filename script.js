@@ -27,7 +27,7 @@ const db = firebase.firestore();
 
 // ===== IMAGE COMPRESSION =====
 function compressImage(file, maxW, quality) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -40,8 +40,10 @@ function compressImage(file, maxW, quality) {
         ctx.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
+      img.onerror = () => reject(new Error('Image load failed'));
       img.src = e.target.result;
     };
+    reader.onerror = () => reject(new Error('File read failed'));
     reader.readAsDataURL(file);
   });
 }
@@ -1031,8 +1033,9 @@ function renderTimeline(entries) {
     return;
   }
   const sorted = [...entries].sort((a, b) => {
-    if (a.createdAt && b.createdAt) return b.createdAt - a.createdAt;
-    return 0;
+    const aTime = a.createdAt ? (a.createdAt.toMillis ? a.createdAt.toMillis() : a.createdAt) : 0;
+    const bTime = b.createdAt ? (b.createdAt.toMillis ? b.createdAt.toMillis() : b.createdAt) : 0;
+    return bTime - aTime;
   });
   for (let i = 0; i < sorted.length; i++) {
     const entry = sorted[i];
@@ -1048,7 +1051,7 @@ function renderTimeline(entries) {
       <button class="entry-delete" data-id="${entry.id}" aria-label="Delete memory">&times;</button>
     `;
     el.querySelector('.entry-delete').addEventListener('click', () => {
-      if (entry.id) db.collection('timeline').doc(entry.id).delete();
+      if (entry.id) db.collection('timeline').doc(entry.id).delete().catch(e => console.error('Delete error:', e));
     });
     dom.timeline.appendChild(el);
   }
@@ -1056,15 +1059,13 @@ function renderTimeline(entries) {
 
 function setupTimelineListener() {
   if (timelineUnsubscribe) timelineUnsubscribe();
-  timelineUnsubscribe = db.collection('timeline').orderBy('createdAt', 'asc').onSnapshot((snapshot) => {
+  timelineUnsubscribe = db.collection('timeline').onSnapshot((snapshot) => {
     const entries = [];
-    let isEmpty = true;
     snapshot.forEach((doc) => {
-      isEmpty = false;
       const d = doc.data();
       entries.push({ id: doc.id, ...d });
     });
-    if (isEmpty) {
+    if (entries.length === 0) {
       db.collection('timeline').add({
         date: '2026-04-25',
         title: 'First started talking',
@@ -1123,7 +1124,7 @@ function initTimeline() {
       fileInput.value = '';
     };
     if (fileInput && fileInput.files[0]) {
-      compressImage(fileInput.files[0], 800, 0.7).then(saveEntry);
+      compressImage(fileInput.files[0], 800, 0.7).then(saveEntry).catch(() => saveEntry(null));
     } else {
       saveEntry(null);
     }
