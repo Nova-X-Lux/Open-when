@@ -584,7 +584,7 @@ const categories = [
     message: "I miss you too. More than I can put into words.\n\nSometimes the distance feels like too much. Like there's this invisible wall between us, and all I want to do is break through it and hold you. I think about the little things — the sound of your voice, the way you laugh, the comfortable silences.\n\nBut here's the thing: missing you reminds me how much you mean to me. It's proof that what we have is real and precious. Distance is just a test of how far care can travel. And our bond? It travels across oceans, through time zones, past every obstacle.\n\nI'm here. You're there. But in our hearts, we're together. Always.",
     sections: [
       { title: 'Close your eyes', content: 'Imagine I\'m right there with you. I\'m holding your hand, looking into your eyes, and smiling. That\'s where I am in spirit.' },
-      { title: 'Until we meet again', content: 'Every day apart is a day closer to being together again. And when that day comes, every second of waiting will be worth it.' },
+      { title: 'Until we finally meet', content: 'Every day apart is a day closer to the moment we finally see each other. And when that day comes, every second of waiting will be worth it.' },
     ],
     giphyQuery: 'miss you',
   },
